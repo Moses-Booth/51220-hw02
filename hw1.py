@@ -1,5 +1,108 @@
 from datetime import date, datetime
 
+def choose_datetimes():
+    """
+    Function that allows user to select dates and times of reservation
+
+    Output: start time and end time as datetime objects
+    """
+    print("Choose the date of your reservation")
+    print("Weekday: 09:00 - 18:00, Saturday: 10:00 - 16:00, Sunday: closed")
+    reservation_date = input("Enter the date (mm/dd/yyyy): ")
+    mm, dd, yyyy = reservation_date.split("/")
+    mm, dd, yyyy = int(mm), int(dd), int(yyyy)
+    reserv_date = date(yyyy, mm, dd)
+
+    start = input("Enter the start time of your reservation (e.g. 09:30): ")
+    hr, min = start.split(":")
+    start = datetime(yyyy, mm, dd, int(hr), int(min))
+
+    end = input("Enter the end time of your reservation (e.g. 13:00): ")
+    hr, min = end.split(":")
+    end = datetime(yyyy, mm, dd, int(hr), int(min))
+
+    return reserv_date, start, end
+
+def machines_available(machine, reserv, start, end):
+    """
+    Function that determines if machines are available for reservation
+
+    Input:
+    - machine: type of machine that has been requested for reservation
+    - reserv: list of reservations
+    - start: reservation start time request
+    - end: reservation end time request
+
+    Output: True if machines are available for reservation
+    """
+    avail = True
+    scanners_used = 0
+    for record in reserv:
+
+        record_occupied = not (start <= record["end"] and end >= record["start"])
+
+        if record["machine"] == machine:
+
+            if record_occupied:
+                avail = False
+                print("The machine is occupied that time.")
+                break
+        
+        # special requirements, when machine is a scanner
+        if machine[0] == "a" and record["machine"][0] == "a":
+
+            if record_occupied:
+                scanners_used += 1
+        
+        if machine[0] == "a" and record["machine"][0] == "c":
+
+            if record_occupied:
+                avail = False
+                print("Sorry. A 1.21 gigawatt lightning harvester occupies the power at that time.")
+                break
+    
+    if scanners_used > 2:
+        avail = False
+        print("Sorry. There're already 3 scanners running at that time.")
+    
+    return avail
+
+def get_charges(machine, hours, reserv_date):
+    """
+    Function that calculates charges for machine usage
+
+    Input:
+    - machine: machine type
+    - hours: total hours the machine is needed for
+    - reserv_date: date of reservation request
+
+    Output: total cost of using machine for specified hours
+    """
+    if machine[0] == "a":
+        total = 990 * hours
+    elif machine[0] == "b":
+        total = 1000 * hours
+    elif machine[0] == "c":
+        total = 88000
+
+    if discount_available(reserv_date):
+            total = total * 0.75
+    
+    return total
+
+def discount_available(reserv_date):
+    """
+    Function that determines if discount is applicable
+
+    Input: reservation date requested
+    Output: True if a discount can be applied
+    """
+    today = str(date.today())
+    c_yyyy, c_mm, c_dd = today.split("-")
+    today = date(int(c_yyyy), int(c_mm), int(c_dd))
+    day = (reserv_date-today).days
+    return day > 13
+
 def make_reservation(reserv, transac, reservation_id):
     """
     Function that allows user to make a reservation
@@ -11,6 +114,7 @@ def make_reservation(reserv, transac, reservation_id):
 
     Output: creates a reservation and adds it to the reservation list
     """
+
     # set the machine type and no, represented by "a1" or "b2" etc.
     print("a. multi-phasic radiation scanner")
     print("b. ore scooper")
@@ -24,85 +128,37 @@ def make_reservation(reserv, transac, reservation_id):
     else:
         machine = "c1"
 
-    print("Choose the date of your reservation")
-    print("Weekday: 09:00 - 18:00, Saturday: 10:00 - 16:00, Sunday: closed")
-    r_date = input("Enter the date (mm/dd/yyyy): ")
-    mm, dd, yyyy = r_date.split("/")
-    mm, dd, yyyy = int(mm), int(dd), int(yyyy)
+    reserv_date, start_time, end_time = choose_datetimes()
 
-    start = input("Enter the start time of your reservation (e.g. 09:30): ")
-    hr, min = start.split(":")
-    start = datetime(yyyy, mm, dd, int(hr), int(min))
+    # handle payment when available
+    if machines_available(machine, reserv, start_time, end_time):
 
-    end = input("Enter the end time of your reservation (e.g. 13:00): ")
-    hr, min = end.split(":")
-    end = datetime(yyyy, mm, dd, int(hr), int(min))
-
-    # check availability here
-    avail = True
-    scan = 0
-    for record in reserv:
-        if record["machine"] == machine:
-            if start <= record["start"] and end <= record["start"] or start >= record["end"] and end >= record["end"]:
-                pass
-            else:
-                avail = False
-                print("The machine is occupied that time.")
-                break
-        
-        # special requirements, when machine is a scanner
-        if machine[0] == "a" and record["machine"][0] == "a":
-            if start <= record["start"] and end <= record["start"] or start >= record["end"] and end >= record["end"]:
-                pass
-            else:
-                scan += 1
-        
-        if machine[0] == "a" and record["machine"][0] == "c":
-            if start <= record["start"] and end <= record["start"] or start >= record["end"] and end >= record["end"]:
-                pass
-            else:
-                avail = False
-                print("Sorry. A 1.21 gigawatt lightning harvester occupies the power at that time.")
-                break
-    
-    if scan >= 3:
-        avail = False
-        print("Sorry. There're already 3 scanners running at that time.")
-
-    if avail:
-
-        # when the appointed machine is available, handle the payment
         name = input("Enter you name: ")
-
-        # calculate the hour range and fee
-        hours = (end - start).total_seconds()/3600
-
-        # dictionary could be used here
-        if machine[0] == "a":
-            total = 990 * hours
-        elif machine[0] == "b":
-            total = 1000 * hours
-        elif machine[0] == "c":
-            total = 88000
-
-        # check if the discount is available
         today = str(date.today())
-        c_yyyy, c_mm, c_dd = today.split("-")
-        date1 = date(int(c_yyyy), int(c_mm), int(c_dd))
-        date2 = date(yyyy, mm, dd)
-        day = (date2-date1).days
-        if day >= 14:
-            total = total * 0.75
-        
-        # make the reservation
+        hours = (end_time - start_time).total_seconds()/3600
+        total_charges = get_charges(machine, hours, reserv_date)
         reservation_id += 1
-        record = {"id": reservation_id, "machine": machine, "start": start, "end": end, "customer": name, "fee": total}
-        reserv.append(record)
-        print(f"The reservation is made! Your reservation id is {reservation_id}. Your down payment cost is ${total*0.5}. Your total cost is ${total}.")
 
-        # add into the transaction record
-        record2 = {"machine": machine, "date": date1, "customer": name, "fee": total, "type": "make reservation"}
-        transac.append(record2)
+        record = {
+        "id": reservation_id, 
+        "machine": machine, 
+        "start": start_time, 
+        "end": end_time, 
+        "customer": name, 
+        "fee": total_charges
+        }
+
+        reserv.append(record)
+        print(f"The reservation is made! Your reservation id is {reservation_id}. Your down payment cost is ${total_charges*0.5}. Your total cost is ${total_charges}.")
+
+        transaction = {
+            "machine": machine, 
+            "date": today, 
+            "customer": name, 
+            "fee": total_charges, 
+            "type": "make reservation"
+            }
+        transac.append(transaction)
 
 def cancel_reservation(reserv, transac):
     """
@@ -274,20 +330,14 @@ def booking():
         if inp == "1":
             make_reservation(reserv, transac, reservation_id)
 
-        # when the user chooses to cancel a reservation 
         elif inp == "2":
             cancel_reservation(reserv, transac)
             
-        # when the user chooses to find a reservation
         elif inp == "3":
             find_reservation(reserv)
         
         elif inp == "4":
-            # for record in transac:
-            #     print(record)
-            # this is something we can update in terms of code being used over and over again
             find_transaction(transac)
-
 
         elif inp == "5":
             print("bye bye")
