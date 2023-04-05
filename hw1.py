@@ -170,9 +170,12 @@ def cancel_reservation(reserv, transac):
 
     Output: cancels a reservation and removes it from the input lists
     """
+    
     id = input("Enter your reservation id: ")
     for i in range(len(reserv)):
+
         if reserv[i]["id"] == int(id):
+
             fee = reserv[i]["fee"]
 
             # check the day difference
@@ -182,16 +185,21 @@ def cancel_reservation(reserv, transac):
             date2 = reserv[i]["start"]
             day = (date2-date1).days
 
-            if day >= 7:
+            refund = 0
+            if day > 6:
                 refund = fee * 0.5 * 0.75
-            elif day >= 2:
+            elif day > 1:
                 refund = fee * 0.5 * 0.5
-            else:
-                refund = 0
             
             # add to the transaction
             c_date = date(int(c_yyyy), int(c_mm), int(c_dd))
-            record = {"machine": reserv[i]["machine"], "date": c_date, "customer": reserv[i]["customer"], "fee": refund, "type": "cancel reservation"}
+            record = {
+                "machine": reserv[i]["machine"], 
+                "date": c_date, 
+                "customer": reserv[i]["customer"], 
+                "fee": refund, 
+                "type": "cancel reservation"
+                }
             transac.append(record)
             
             del reserv[i]
